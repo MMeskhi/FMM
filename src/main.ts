@@ -1,11 +1,65 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import started from 'electron-squirrel-startup';
+import type { Track } from './shared/types';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
+
+const AUDIO_EXTENSIONS = new Set([
+  '.mp3',
+  '.wav',
+  '.flac',
+  '.ogg',
+  '.m4a',
+  '.aac',
+]);
+
+function scanFolderForTracks(folder: string): Track[] {
+  const tracks: Track[] = [];
+
+  const walk = (dir: string) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        tracks.push({
+          id: fullPath,
+          name: path.basename(entry.name, path.extname(entry.name)),
+          path: fullPath,
+          url: pathToFileURL(fullPath).toString(),
+        });
+      }
+    }
+  };
+
+  walk(folder);
+  return tracks;
+}
+
+ipcMain.handle('library:selectFolder', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return [];
+  }
+
+  return scanFolderForTracks(result.filePaths[0]);
+});
 
 const createWindow = () => {
   // Create the browser window.
@@ -51,6 +105,3 @@ app.on('activate', () => {
     createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

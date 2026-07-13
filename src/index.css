@@ -6,3 +6,58 @@ body {
   max-width: 38rem;
   padding: 2rem;
 }
+
+.app header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.player {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.player .track-name {
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.player .controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.player .seek {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.player .seek input[type='range'] {
+  flex: 1;
+}
+
+.playlist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.playlist li {
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.playlist li:hover {
+  background: #f0f0f0;
+}
+
+.playlist li.active {
+  background: #e0e7ff;
+  font-weight: 600;
+}
