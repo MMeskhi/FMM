@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -9,6 +9,23 @@ import type { Track } from './shared/types';
 if (started) {
   app.quit();
 }
+
+// The renderer is loaded from http://localhost (Vite dev server) or a
+// file:// page in production; either way Chromium blocks it from loading
+// file:// URLs directly ("Not allowed to load local resource"). Serving
+// tracks through a custom "media" protocol avoids that restriction while
+// still forwarding Range headers so seeking works.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'media',
+    privileges: {
+      standard: true,
+      secure: true,
+      stream: true,
+      supportFetchAPI: true,
+    },
+  },
+]);
 
 const AUDIO_EXTENSIONS = new Set([
   '.mp3',
@@ -39,7 +56,7 @@ function scanFolderForTracks(folder: string): Track[] {
           id: fullPath,
           name: path.basename(entry.name, path.extname(entry.name)),
           path: fullPath,
-          url: pathToFileURL(fullPath).toString(),
+          url: `media:///${encodeURIComponent(fullPath)}`,
         });
       }
     }
@@ -87,7 +104,17 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', () => {
+  protocol.handle('media', (request) => {
+    const encodedPath = new URL(request.url).pathname.slice(1);
+    const filePath = decodeURIComponent(encodedPath);
+    return net.fetch(pathToFileURL(filePath).toString(), {
+      headers: request.headers,
+    });
+  });
+
+  createWindow();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
