@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { Readable } from 'node:stream';
 import started from 'electron-squirrel-startup';
 import type { Track } from './shared/types';
 
@@ -27,14 +27,15 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const AUDIO_EXTENSIONS = new Set([
-  '.mp3',
-  '.wav',
-  '.flac',
-  '.ogg',
-  '.m4a',
-  '.aac',
-]);
+const AUDIO_MIME_TYPES: Record<string, string> = {
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+};
+const AUDIO_EXTENSIONS = new Set(Object.keys(AUDIO_MIME_TYPES));
 
 function scanFolderForTracks(folder: string): Track[] {
   const tracks: Track[] = [];
@@ -56,7 +57,7 @@ function scanFolderForTracks(folder: string): Track[] {
           id: fullPath,
           name: path.basename(entry.name, path.extname(entry.name)),
           path: fullPath,
-          url: `media:///${encodeURIComponent(fullPath)}`,
+          url: `media://track/${encodeURIComponent(fullPath)}`,
         });
       }
     }
@@ -105,11 +106,48 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  protocol.handle('media', (request) => {
+  // net.fetch() on a file:// URL drops Content-Length/Accept-Ranges when a
+  // Range header is forwarded through it, which leaves <audio> unable to
+  // determine track duration (shows Infinity). Stream the file ourselves
+  // with proper HTTP range semantics instead.
+  protocol.handle('media', async (request) => {
     const encodedPath = new URL(request.url).pathname.slice(1);
     const filePath = decodeURIComponent(encodedPath);
-    return net.fetch(pathToFileURL(filePath).toString(), {
-      headers: request.headers,
+    const mimeType = AUDIO_MIME_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+
+    let stat: fs.Stats;
+    try {
+      stat = await fs.promises.stat(filePath);
+    } catch {
+      return new Response(null, { status: 404 });
+    }
+
+    const range = request.headers.get('range');
+    if (range) {
+      const match = /bytes=(\d+)-(\d*)/.exec(range);
+      const start = match ? Number(match[1]) : 0;
+      const end = match?.[2] ? Number(match[2]) : stat.size - 1;
+      const stream = fs.createReadStream(filePath, { start, end });
+
+      return new Response(Readable.toWeb(stream) as ReadableStream, {
+        status: 206,
+        headers: {
+          'Content-Type': mimeType,
+          'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+          'Content-Length': String(end - start + 1),
+          'Accept-Ranges': 'bytes',
+        },
+      });
+    }
+
+    const stream = fs.createReadStream(filePath);
+    return new Response(Readable.toWeb(stream) as ReadableStream, {
+      status: 200,
+      headers: {
+        'Content-Type': mimeType,
+        'Content-Length': String(stat.size),
+        'Accept-Ranges': 'bytes',
+      },
     });
   });
 

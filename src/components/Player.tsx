@@ -21,9 +21,11 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  console.log(duration, 222);
+
   useEffect(() => {
     if (!audioRef.current || !track) return;
-    audioRef.current.play().catch(() => {});
+    audioRef.current.play().catch((error) => console.error('play() failed:', error));
     setIsPlaying(true);
   }, [track]);
 
@@ -32,7 +34,7 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play().catch(() => {});
+      audioRef.current.play().catch((error) => console.error('play() failed:', error));
     }
     setIsPlaying(!isPlaying);
   };
@@ -58,6 +60,9 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
         onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onEnded={onEnded}
+        onError={(e) =>
+          console.error('audio element error:', e.currentTarget.error, track.url)
+        }
       />
       <p className="track-name">{track.name}</p>
       <div className="controls">
