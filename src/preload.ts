@@ -2,7 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { MusicApi } from './shared/types';
 
 const api: MusicApi = {
-  selectMusicFolder: () => ipcRenderer.invoke('library:selectFolder'),
+  selectLibraryFolder: () => ipcRenderer.invoke('library:selectLibraryFolder'),
+  getAlbumTracks: (folderPath) => ipcRenderer.invoke('library:getAlbumTracks', folderPath),
 };
 
 contextBridge.exposeInMainWorld('api', api);

@@ -1,18 +1,31 @@
 import { useState } from 'react';
 import Player from './components/Player';
-import Playlist from './components/Playlist';
-import type { Track } from './shared/types';
+import AlbumGrid from './components/AlbumGrid';
+import AlbumView from './components/AlbumView';
+import type { Album, Track } from './shared/types';
 
 function App() {
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
 
   const currentTrack = currentIndex !== null ? tracks[currentIndex] : null;
 
-  const handleSelectFolder = async () => {
-    const found = await window.api.selectMusicFolder();
-    setTracks(found);
-    setCurrentIndex(found.length > 0 ? 0 : null);
+  const handleOpenLibrary = async () => {
+    const result = await window.api.selectLibraryFolder();
+    if (!result) return;
+    setAlbums(result.albums);
+    setSelectedAlbum(null);
+    setTracks([]);
+    setCurrentIndex(null);
+  };
+
+  const handleOpenAlbum = async (album: Album) => {
+    const albumTracks = await window.api.getAlbumTracks(album.folderPath);
+    setSelectedAlbum(album);
+    setTracks(albumTracks);
+    setCurrentIndex(albumTracks.length > 0 ? 0 : null);
   };
 
   const handleNext = () => {
@@ -29,18 +42,26 @@ function App() {
     <div className="app">
       <header>
         <h1>FMM</h1>
-        <button onClick={handleSelectFolder}>Open Music Folder</button>
+        <button onClick={handleOpenLibrary}>Open Music Folder</button>
       </header>
+
+      {selectedAlbum ? (
+        <AlbumView
+          album={selectedAlbum}
+          tracks={tracks}
+          currentIndex={currentIndex}
+          onSelectTrack={setCurrentIndex}
+          onBack={() => setSelectedAlbum(null)}
+        />
+      ) : (
+        <AlbumGrid albums={albums} onSelectAlbum={handleOpenAlbum} />
+      )}
+
       <Player
         track={currentTrack}
         onEnded={handleNext}
         onNext={handleNext}
         onPrev={handlePrev}
-      />
-      <Playlist
-        tracks={tracks}
-        currentIndex={currentIndex}
-        onSelect={setCurrentIndex}
       />
     </div>
   );

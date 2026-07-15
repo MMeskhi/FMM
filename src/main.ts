@@ -2,8 +2,9 @@ import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { parseFile } from 'music-metadata';
 import started from 'electron-squirrel-startup';
-import type { Track } from './shared/types';
+import type { Album, Track } from './shared/types';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -27,15 +28,116 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-const AUDIO_MIME_TYPES: Record<string, string> = {
+const MIME_TYPES: Record<string, string> = {
   '.mp3': 'audio/mpeg',
   '.wav': 'audio/wav',
   '.flac': 'audio/flac',
   '.ogg': 'audio/ogg',
   '.m4a': 'audio/mp4',
   '.aac': 'audio/aac',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
 };
-const AUDIO_EXTENSIONS = new Set(Object.keys(AUDIO_MIME_TYPES));
+const AUDIO_EXTENSIONS = new Set([
+  '.mp3',
+  '.wav',
+  '.flac',
+  '.ogg',
+  '.m4a',
+  '.aac',
+]);
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+const COVER_FILE_NAMES = new Set(['cover', 'folder', 'front', 'album', 'albumart']);
+
+function toMediaUrl(fullPath: string): string {
+  return `media://track/${encodeURIComponent(fullPath)}`;
+}
+
+function findFolderCoverImage(folder: string): string | null {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(folder, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  const images = entries.filter(
+    (entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()),
+  );
+  if (images.length === 0) return null;
+
+  const preferred = images.find((img) =>
+    COVER_FILE_NAMES.has(path.basename(img.name, path.extname(img.name)).toLowerCase()),
+  );
+  const chosen = preferred ?? images[0];
+  return toMediaUrl(path.join(folder, chosen.name));
+}
+
+function findFirstAudioFile(folder: string): string | null {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(folder, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  const audioFiles = entries
+    .filter((entry) => entry.isFile() && AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  return audioFiles.length > 0 ? path.join(folder, audioFiles[0].name) : null;
+}
+
+// Some albums have no standalone cover image file — the artwork is embedded
+// in the audio file's own tags instead (ID3 APIC, FLAC PICTURE block, etc.),
+// which is why other media players show a cover here but a plain folder scan
+// doesn't. Fall back to reading it out of the first track with music-metadata.
+async function findEmbeddedCover(folder: string): Promise<string | null> {
+  const firstTrack = findFirstAudioFile(folder);
+  if (!firstTrack) return null;
+
+  try {
+    const metadata = await parseFile(firstTrack, { duration: false });
+    const picture = metadata.common.picture?.[0];
+    if (!picture) return null;
+    return `data:${picture.format};base64,${Buffer.from(picture.data).toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
+
+async function findAlbumCover(folder: string): Promise<string | null> {
+  return findFolderCoverImage(folder) ?? (await findEmbeddedCover(folder));
+}
+
+async function scanAlbums(libraryFolder: string): Promise<Album[]> {
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(libraryFolder, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const albums = await Promise.all(
+    entries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => {
+        const folderPath = path.join(libraryFolder, entry.name);
+        return {
+          id: folderPath,
+          name: entry.name,
+          folderPath,
+          coverUrl: await findAlbumCover(folderPath),
+        };
+      }),
+  );
+
+  albums.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  return albums;
+}
 
 function scanFolderForTracks(folder: string): Track[] {
   const tracks: Track[] = [];
@@ -57,33 +159,39 @@ function scanFolderForTracks(folder: string): Track[] {
           id: fullPath,
           name: path.basename(entry.name, path.extname(entry.name)),
           path: fullPath,
-          url: `media://track/${encodeURIComponent(fullPath)}`,
+          url: toMediaUrl(fullPath),
         });
       }
     }
   };
 
   walk(folder);
+  tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   return tracks;
 }
 
-ipcMain.handle('library:selectFolder', async () => {
+ipcMain.handle('library:selectLibraryFolder', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory'],
   });
 
   if (result.canceled || result.filePaths.length === 0) {
-    return [];
+    return null;
   }
 
-  return scanFolderForTracks(result.filePaths[0]);
+  const libraryFolder = result.filePaths[0];
+  return { libraryFolder, albums: await scanAlbums(libraryFolder) };
+});
+
+ipcMain.handle('library:getAlbumTracks', async (_event, folderPath: string) => {
+  return scanFolderForTracks(folderPath);
 });
 
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 750,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -113,7 +221,7 @@ app.on('ready', () => {
   protocol.handle('media', async (request) => {
     const encodedPath = new URL(request.url).pathname.slice(1);
     const filePath = decodeURIComponent(encodedPath);
-    const mimeType = AUDIO_MIME_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+    const mimeType = MIME_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
 
     let stat: fs.Stats;
     try {

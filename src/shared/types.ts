@@ -5,6 +5,19 @@ export interface Track {
   url: string;
 }
 
+export interface Album {
+  id: string;
+  name: string;
+  folderPath: string;
+  coverUrl: string | null;
+}
+
+export interface LibraryResult {
+  libraryFolder: string;
+  albums: Album[];
+}
+
 export interface MusicApi {
-  selectMusicFolder: () => Promise<Track[]>;
+  selectLibraryFolder: () => Promise<LibraryResult | null>;
+  getAlbumTracks: (folderPath: string) => Promise<Track[]>;
 }
