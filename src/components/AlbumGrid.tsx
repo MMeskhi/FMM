@@ -1,4 +1,5 @@
 import type { Album } from '../shared/types';
+import './AlbumGrid.css';
 
 interface AlbumGridProps {
   albums: Album[];

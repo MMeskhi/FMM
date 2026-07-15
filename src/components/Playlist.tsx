@@ -1,4 +1,5 @@
 import type { Track } from '../shared/types';
+import './Playlist.css';
 
 interface PlaylistProps {
   tracks: Track[];

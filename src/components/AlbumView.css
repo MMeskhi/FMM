@@ -1,0 +1,32 @@
+.back-button {
+  margin-bottom: 1rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.album-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.album-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eee;
+  font-size: 2rem;
+}
+
+.album-header-cover,
+.album-header .album-cover-placeholder.large {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 6px;
+  object-fit: cover;
+}

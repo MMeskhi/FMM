@@ -1,0 +1,41 @@
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.album-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.album-card img,
+.album-cover-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.album-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eee;
+  font-size: 2rem;
+}
+
+.album-name {
+  font-size: 0.85rem;
+  line-height: 1.3;
+}

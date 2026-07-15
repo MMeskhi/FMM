@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Track } from '../shared/types';
+import './Player.css';
 
 interface PlayerProps {
   track: Track | null;

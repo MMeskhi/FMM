@@ -1,5 +1,6 @@
 import Playlist from './Playlist';
 import type { Album, Track } from '../shared/types';
+import './AlbumView.css';
 
 interface AlbumViewProps {
   album: Album;
