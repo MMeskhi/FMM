@@ -9,7 +9,11 @@ import { FuseV1Options, FuseVersion } from '@electron/fuses';
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    asar: {
+      // ffmpeg-static ships a real OS binary; asar can't exec files from
+      // inside its virtual filesystem, so it must stay unpacked on disk.
+      unpack: '**/node_modules/ffmpeg-static/**',
+    },
   },
   rebuildConfig: {},
   makers: [

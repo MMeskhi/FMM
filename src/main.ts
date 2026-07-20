@@ -2,7 +2,10 @@ import { app, BrowserWindow, ipcMain, dialog, protocol } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
+import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import { parseFile } from 'music-metadata';
+import ffmpegPath from 'ffmpeg-static';
 import started from 'electron-squirrel-startup';
 import type { Album, Track } from './shared/types';
 
@@ -54,6 +57,106 @@ const COVER_FILE_NAMES = new Set(['cover', 'folder', 'front', 'album', 'albumart
 
 function toMediaUrl(fullPath: string): string {
   return `media://track/${encodeURIComponent(fullPath)}`;
+}
+
+// .m4a/.aac files sometimes hold ALAC (Apple Lossless) audio instead of AAC.
+// Chromium's media stack has no ALAC decoder — only Safari/AVFoundation does —
+// so playback fails with MediaError code 4 even though the container parses
+// fine. Transcode those specific files to FLAC (which Chromium decodes
+// natively) once, and cache the result so repeat plays/seeks are instant.
+const TRANSCODE_EXTENSIONS = new Set(['.m4a', '.aac']);
+const TRANSCODE_CACHE_DIR = path.join(app.getPath('userData'), 'transcode-cache');
+
+const codecProbeCache = new Map<string, Promise<string | undefined>>();
+const transcodeJobs = new Map<string, Promise<string>>();
+
+async function probeCodecUncached(filePath: string): Promise<string | undefined> {
+  try {
+    const metadata = await parseFile(filePath, { duration: false });
+    return metadata.format.codec;
+  } catch {
+    return undefined;
+  }
+}
+
+async function probeCodec(filePath: string, mtimeMs: number): Promise<string | undefined> {
+  const key = `${filePath}:${mtimeMs}`;
+  let probe = codecProbeCache.get(key);
+  if (!probe) {
+    probe = probeCodecUncached(filePath);
+    codecProbeCache.set(key, probe);
+  }
+  return probe;
+}
+
+function transcodeToFlac(inputPath: string, outputPath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!ffmpegPath) {
+      reject(new Error('ffmpeg binary is not available on this platform'));
+      return;
+    }
+
+    fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+    const tmpPath = `${outputPath}.tmp-${process.pid}-${Date.now()}`;
+    const ffmpeg = spawn(ffmpegPath, [
+      '-y',
+      '-i', inputPath,
+      '-map', '0:a:0',
+      '-c:a', 'flac',
+      '-f', 'flac',
+      tmpPath,
+    ]);
+
+    let stderr = '';
+    ffmpeg.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    ffmpeg.on('error', reject);
+    ffmpeg.on('close', (code) => {
+      if (code === 0) {
+        fs.renameSync(tmpPath, outputPath);
+        resolve(outputPath);
+      } else {
+        fs.rmSync(tmpPath, { force: true });
+        reject(new Error(`ffmpeg exited with code ${code}: ${stderr.slice(-500)}`));
+      }
+    });
+  });
+}
+
+async function ensureTranscoded(inputPath: string, cacheFile: string): Promise<string> {
+  if (fs.existsSync(cacheFile)) return cacheFile;
+
+  let job = transcodeJobs.get(cacheFile);
+  if (!job) {
+    job = transcodeToFlac(inputPath, cacheFile).finally(() => transcodeJobs.delete(cacheFile));
+    transcodeJobs.set(cacheFile, job);
+  }
+  return job;
+}
+
+// Resolves the actual file (and MIME type) that should be streamed for a
+// requested track, transcoding lossless-ALAC-in-M4A to FLAC on first play.
+async function resolvePlaybackSource(
+  filePath: string,
+  stat: fs.Stats,
+): Promise<{ path: string; mimeType: string }> {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeType = MIME_TYPES[ext] ?? 'application/octet-stream';
+
+  if (!TRANSCODE_EXTENSIONS.has(ext)) {
+    return { path: filePath, mimeType };
+  }
+
+  const codec = await probeCodec(filePath, stat.mtimeMs);
+  if (codec !== 'ALAC') {
+    return { path: filePath, mimeType };
+  }
+
+  const cacheKey = crypto.createHash('sha1').update(`${filePath}:${stat.mtimeMs}`).digest('hex');
+  const cacheFile = path.join(TRANSCODE_CACHE_DIR, `${cacheKey}.flac`);
+  await ensureTranscoded(filePath, cacheFile);
+  return { path: cacheFile, mimeType: 'audio/flac' };
 }
 
 // Remembers the last folder the user picked, so they don't have to
@@ -251,7 +354,6 @@ app.on('ready', () => {
   protocol.handle('media', async (request) => {
     const encodedPath = new URL(request.url).pathname.slice(1);
     const filePath = decodeURIComponent(encodedPath);
-    const mimeType = MIME_TYPES[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
 
     let stat: fs.Stats;
     try {
@@ -260,30 +362,39 @@ app.on('ready', () => {
       return new Response(null, { status: 404 });
     }
 
+    let source: { path: string; mimeType: string };
+    try {
+      source = await resolvePlaybackSource(filePath, stat);
+    } catch {
+      return new Response(null, { status: 500 });
+    }
+
+    const sourceStat = source.path === filePath ? stat : await fs.promises.stat(source.path);
+
     const range = request.headers.get('range');
     if (range) {
       const match = /bytes=(\d+)-(\d*)/.exec(range);
       const start = match ? Number(match[1]) : 0;
-      const end = match?.[2] ? Number(match[2]) : stat.size - 1;
-      const stream = fs.createReadStream(filePath, { start, end });
+      const end = match?.[2] ? Number(match[2]) : sourceStat.size - 1;
+      const stream = fs.createReadStream(source.path, { start, end });
 
       return new Response(Readable.toWeb(stream) as ReadableStream, {
         status: 206,
         headers: {
-          'Content-Type': mimeType,
-          'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+          'Content-Type': source.mimeType,
+          'Content-Range': `bytes ${start}-${end}/${sourceStat.size}`,
           'Content-Length': String(end - start + 1),
           'Accept-Ranges': 'bytes',
         },
       });
     }
 
-    const stream = fs.createReadStream(filePath);
+    const stream = fs.createReadStream(source.path);
     return new Response(Readable.toWeb(stream) as ReadableStream, {
       status: 200,
       headers: {
-        'Content-Type': mimeType,
-        'Content-Length': String(stat.size),
+        'Content-Type': source.mimeType,
+        'Content-Length': String(sourceStat.size),
         'Accept-Ranges': 'bytes',
       },
     });
