@@ -3,6 +3,12 @@
   padding: 1rem;
   border: 1px solid #ddd;
   border-radius: 8px;
+  background: white;
+
+  position: sticky;
+  bottom: 16px;
+  left: 0;
+  right: 0;
 }
 
 .player .track-name {

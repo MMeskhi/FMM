@@ -162,6 +162,27 @@ call explained, just ask.
      had to become `async` as a result (tag parsing is a real, if quick,
      file read — unlike the sync directory listing calls elsewhere).
 
+8. **Album page no longer auto-plays.** Opening an album used to
+   auto-select and play track 1; `handleOpenAlbum` in `src/App.tsx` now
+   sets `currentIndex` to `null` instead, so nothing plays until you
+   click a track yourself. `Player` already returned `null` with no
+   track selected, so the player bar simply doesn't appear until then.
+
+9. **Remembers the last folder you opened**, so you don't have to
+   re-pick it every launch:
+   - `src/main.ts` — `saveLastLibraryFolder()` / `readLastLibraryFolder()`
+     read and write a tiny `config.json` in Electron's per-user app data
+     directory (`app.getPath('userData')`, e.g. `%APPDATA%/fmm` on
+     Windows) — *not* the app's install directory, which may not be
+     writable. `selectLibraryFolder` saves the chosen path after every
+     successful pick; a new `ipcMain.handle('library:loadLastFolder', ...)`
+     re-scans that saved path.
+   - `src/App.tsx` — on mount, calls `window.api.loadLastFolder()` and
+     populates the album grid automatically if a folder was saved. If
+     the saved folder no longer exists, `scanAlbums` degrades gracefully
+     to an empty list rather than erroring (same as any unreadable
+     folder).
+
 ## Bugs we hit & fixed (worth knowing if you touch this code)
 
 - **`Not allowed to load local resource` for `file://` URLs** — the
@@ -193,11 +214,11 @@ call explained, just ask.
 - [x] Album grid with cover art (folder image file, or embedded ID3/tag
       artwork as a fallback) + placeholder for albums with neither
 - [x] Album detail view + back-to-grid navigation; player persists across navigation
+- [x] Opening an album no longer auto-plays — playback only starts when you pick a track
+- [x] Last-opened folder is remembered and auto-loaded on next launch
 
 ## What's not done yet
 
-- [ ] Persist the music library between app launches (currently you
-      have to re-pick the folder every time you open the app)
 - [ ] Other embedded tag metadata — artist/album name, track number,
       year (we only pull cover art out of tags so far, via `music-metadata`)
 - [ ] OS media key support (play/pause/next from keyboard/headset)
@@ -206,8 +227,6 @@ call explained, just ask.
 - [ ] Shuffle / repeat modes
 - [ ] Search/filter within the library
 - [ ] Packaging/distribution (`npm run make` — untested so far)
-- [ ] Remove the stray `console.log(duration, 222)` debug line in
-      `Player.tsx` once you're done debugging with it
 
 ## Running it
 

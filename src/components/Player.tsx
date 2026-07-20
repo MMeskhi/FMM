@@ -22,7 +22,6 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  console.log(duration, 222);
 
   useEffect(() => {
     if (!audioRef.current || !track) return;
@@ -46,11 +45,7 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
   };
 
   if (!track) {
-    return (
-      <div className="player">
-        <p>No track selected. Open a music folder to get started.</p>
-      </div>
-    );
+    return null;
   }
 
   return (

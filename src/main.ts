@@ -56,6 +56,29 @@ function toMediaUrl(fullPath: string): string {
   return `media://track/${encodeURIComponent(fullPath)}`;
 }
 
+// Remembers the last folder the user picked, so they don't have to
+// re-select it every time the app opens. Stored as a small JSON file in
+// Electron's per-user app data directory (not the app's own install
+// directory, which may not be writable).
+const CONFIG_PATH = path.join(app.getPath('userData'), 'config.json');
+
+function readLastLibraryFolder(): string | null {
+  try {
+    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    return typeof config.libraryFolder === 'string' ? config.libraryFolder : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastLibraryFolder(libraryFolder: string): void {
+  try {
+    fs.writeFileSync(CONFIG_PATH, JSON.stringify({ libraryFolder }));
+  } catch {
+    // Non-fatal — the app just won't remember the folder for next time.
+  }
+}
+
 function findFolderCoverImage(folder: string): string | null {
   let entries: fs.Dirent[];
   try {
@@ -180,11 +203,18 @@ ipcMain.handle('library:selectLibraryFolder', async () => {
   }
 
   const libraryFolder = result.filePaths[0];
+  saveLastLibraryFolder(libraryFolder);
   return { libraryFolder, albums: await scanAlbums(libraryFolder) };
 });
 
 ipcMain.handle('library:getAlbumTracks', async (_event, folderPath: string) => {
   return scanFolderForTracks(folderPath);
+});
+
+ipcMain.handle('library:loadLastFolder', async () => {
+  const libraryFolder = readLastLibraryFolder();
+  if (!libraryFolder) return null;
+  return { libraryFolder, albums: await scanAlbums(libraryFolder) };
 });
 
 const createWindow = () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Player from './components/Player';
 import AlbumGrid from './components/AlbumGrid';
 import AlbumView from './components/AlbumView';
@@ -13,6 +13,12 @@ function App() {
 
   const currentTrack = currentIndex !== null ? tracks[currentIndex] : null;
 
+  useEffect(() => {
+    window.api.loadLastFolder().then((result) => {
+      if (result) setAlbums(result.albums);
+    });
+  }, []);
+
   const handleOpenLibrary = async () => {
     const result = await window.api.selectLibraryFolder();
     if (!result) return;
@@ -26,7 +32,7 @@ function App() {
     const albumTracks = await window.api.getAlbumTracks(album.folderPath);
     setSelectedAlbum(album);
     setTracks(albumTracks);
-    setCurrentIndex(albumTracks.length > 0 ? 0 : null);
+    setCurrentIndex(null);
   };
 
   const handleNext = () => {

@@ -20,4 +20,5 @@ export interface LibraryResult {
 export interface MusicApi {
   selectLibraryFolder: () => Promise<LibraryResult | null>;
   getAlbumTracks: (folderPath: string) => Promise<Track[]>;
+  loadLastFolder: () => Promise<LibraryResult | null>;
 }
