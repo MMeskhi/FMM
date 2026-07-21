@@ -1,7 +1,8 @@
-import type { MusicApi } from './shared/types';
+import type { MusicApi, WindowApi } from './shared/types';
 
 declare global {
   interface Window {
     api: MusicApi;
+    windowControls: WindowApi;
   }
 }

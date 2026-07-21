@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Player from './components/Player';
 import AlbumGrid from './components/AlbumGrid';
 import AlbumView from './components/AlbumView';
+import TitleBar from './components/TitleBar';
 import type { Album, Track } from './shared/types';
 import './App.css';
 
@@ -47,29 +48,32 @@ function App() {
 
   return (
     <div className="app">
-      <header>
-        <h1>FMM</h1>
-        <button onClick={handleOpenLibrary}>Open Music Folder</button>
-      </header>
+      <TitleBar />
+      <div className="app-content">
+        <header>
+          <h1>FMM</h1>
+          <button onClick={handleOpenLibrary}>Open Music Folder</button>
+        </header>
 
-      {selectedAlbum ? (
-        <AlbumView
-          album={selectedAlbum}
-          tracks={tracks}
-          currentIndex={currentIndex}
-          onSelectTrack={setCurrentIndex}
-          onBack={() => setSelectedAlbum(null)}
+        {selectedAlbum ? (
+          <AlbumView
+            album={selectedAlbum}
+            tracks={tracks}
+            currentIndex={currentIndex}
+            onSelectTrack={setCurrentIndex}
+            onBack={() => setSelectedAlbum(null)}
+          />
+        ) : (
+          <AlbumGrid albums={albums} onSelectAlbum={handleOpenAlbum} />
+        )}
+
+        <Player
+          track={currentTrack}
+          onEnded={handleNext}
+          onNext={handleNext}
+          onPrev={handlePrev}
         />
-      ) : (
-        <AlbumGrid albums={albums} onSelectAlbum={handleOpenAlbum} />
-      )}
-
-      <Player
-        track={currentTrack}
-        onEnded={handleNext}
-        onNext={handleNext}
-        onPrev={handlePrev}
-      />
+      </div>
     </div>
   );
 }

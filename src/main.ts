@@ -387,6 +387,32 @@ ipcMain.handle('library:loadLastFolder', async () => {
   return { libraryFolder, albums: await scanAlbums(libraryFolder) };
 });
 
+// The window has no native title bar (frame: false below), so the renderer
+// draws its own and drives minimize/maximize/close through these — a
+// frameless BrowserWindow still has all the normal window methods, there's
+// just no OS-drawn chrome calling them for you.
+ipcMain.on('window:minimize', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.minimize();
+});
+
+ipcMain.on('window:maximizeToggle', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (!win) return;
+  if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+});
+
+ipcMain.on('window:close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close();
+});
+
+ipcMain.handle('window:isMaximized', (event) => {
+  return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false;
+});
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -394,10 +420,17 @@ const createWindow = () => {
     height: 750,
     minWidth: 1000,
     minHeight: 750,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+
+  // The custom title bar's maximize/restore icon needs to track real window
+  // state, since it can also change via OS shortcuts/double-clicking the
+  // (now-hidden) native title bar area, not just our own button.
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized-change', true));
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized-change', false));
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {

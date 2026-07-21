@@ -31,3 +31,11 @@ export interface MusicApi {
   getAlbumTracks: (folderPath: string) => Promise<Track[]>;
   loadLastFolder: () => Promise<LibraryResult | null>;
 }
+
+export interface WindowApi {
+  minimize: () => void;
+  maximizeToggle: () => void;
+  close: () => void;
+  isMaximized: () => Promise<boolean>;
+  onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void;
+}

@@ -215,6 +215,28 @@ call explained, just ask.
       differs from the album artist (e.g. a featured artist), the
       track's own artist; `Player` shows the artist under the track name.
 
+12. **Custom (frameless) title bar**, replacing the native OS window chrome:
+    - `src/main.ts` — `BrowserWindow` now has `frame: false`. Added IPC
+      handlers (`window:minimize`, `window:maximizeToggle`, `window:close`,
+      `window:isMaximized`) using `BrowserWindow.fromWebContents(event.sender)`
+      to act on the right window; forwards `maximize`/`unmaximize` window
+      events to the renderer over `window:maximized-change` so the custom
+      button's icon stays correct even if the window is maximized some
+      other way (e.g. dragging to a screen edge).
+    - `src/shared/types.ts` / `src/preload.ts` — a second bridged API,
+      `window.windowControls` (kept separate from `window.api`, which is
+      music-library-specific), exposing the above.
+    - `src/components/TitleBar.tsx` — the custom bar: app name + minimize/
+      maximize/close buttons. The bar itself uses
+      `-webkit-app-region: drag` (so dragging it moves the window, since
+      there's no native title bar to do that anymore); the button row uses
+      `-webkit-app-region: no-drag` so clicks reach them instead of being
+      swallowed as a drag gesture.
+    - `src/index.css` / `src/App.css` — the old `body` padding/`max-width`
+      moved to a new `.app-content` wrapper so `TitleBar` can sit flush
+      against the real window edges, with the rest of the UI still
+      centered/padded as before.
+
 ## Bugs we hit & fixed (worth knowing if you touch this code)
 
 - **`Not allowed to load local resource` for `file://` URLs** — the
@@ -250,6 +272,7 @@ call explained, just ask.
 - [x] Last-opened folder is remembered and auto-loaded on next launch
 - [x] ALAC-in-M4A files are transcoded to FLAC on first play and cached (fixes silent playback failure)
 - [x] Full tag metadata — title, artist, album artist, year, genre, track/disc number — shown throughout the UI
+- [x] Custom frameless title bar (own minimize/maximize/close, replacing the native window chrome)
 
 ## What's not done yet
 
