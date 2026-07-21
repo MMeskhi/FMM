@@ -61,6 +61,7 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
         }
       />
       <p className="track-name">{track.name}</p>
+      <p className="track-artist">{track.artist}</p>
       <div className="controls">
         <button onClick={onPrev}>⏮</button>
         <button onClick={togglePlay}>{isPlaying ? '⏸' : '▶'}</button>

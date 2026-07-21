@@ -183,6 +183,38 @@ call explained, just ask.
      to an empty list rather than erroring (same as any unreadable
      folder).
 
+10. **Transcodes ALAC-in-M4A on the fly, cached.** Some `.m4a`/`.aac`
+    files actually contain ALAC (Apple Lossless) audio, which Chromium's
+    media stack can't decode (no ALAC decoder outside Safari/AVFoundation)
+    — playback would fail with a generic `MediaError` even though the
+    container parses fine.
+    - `src/main.ts` — `probeCodec()` uses `music-metadata` to check the
+      real codec (memoized per file path + modified-time, so it's only
+      probed once); if it's ALAC, `transcodeToFlac()` shells out to
+      `ffmpeg-static`'s bundled ffmpeg binary (via `node:child_process`)
+      to remux the audio into a `.flac` file, cached under
+      `<userData>/transcode-cache/<hash of path+mtime>.flac`. The
+      `media://` protocol handler calls `resolvePlaybackSource()` to
+      transparently serve the cached FLAC instead of the original file
+      when needed — the renderer/`<audio>` element never knows the
+      difference.
+
+11. **Pulls every tag `music-metadata` can find** — title, artist, album,
+    album artist, year, genre, track/disc number — not just cover art:
+    - `src/main.ts` — `parseTrackTags()` is the one place that reads a
+      file's tags now; both `getAlbumSummary()` (album-level artist/year,
+      used by `scanAlbums`) and `scanFolderForTracks()` (per-track
+      metadata) call it instead of duplicating `parseFile` calls.
+      `scanFolderForTracks` now sorts by disc number, then tagged track
+      number, falling back to filename order only when tags are missing.
+    - `src/shared/types.ts` — `Track` gained `artist`, `album`,
+      `albumArtist`, `year`, `genre`, `trackNo`, `diskNo`; `Album` gained
+      `artist` and `year`.
+    - UI: `AlbumGrid`/`AlbumView` show artist + year under the album
+      name; `Playlist` shows the tagged track number and, only when it
+      differs from the album artist (e.g. a featured artist), the
+      track's own artist; `Player` shows the artist under the track name.
+
 ## Bugs we hit & fixed (worth knowing if you touch this code)
 
 - **`Not allowed to load local resource` for `file://` URLs** — the
@@ -216,11 +248,11 @@ call explained, just ask.
 - [x] Album detail view + back-to-grid navigation; player persists across navigation
 - [x] Opening an album no longer auto-plays — playback only starts when you pick a track
 - [x] Last-opened folder is remembered and auto-loaded on next launch
+- [x] ALAC-in-M4A files are transcoded to FLAC on first play and cached (fixes silent playback failure)
+- [x] Full tag metadata — title, artist, album artist, year, genre, track/disc number — shown throughout the UI
 
 ## What's not done yet
 
-- [ ] Other embedded tag metadata — artist/album name, track number,
-      year (we only pull cover art out of tags so far, via `music-metadata`)
 - [ ] OS media key support (play/pause/next from keyboard/headset)
 - [ ] System tray icon + tray controls
 - [ ] Volume control

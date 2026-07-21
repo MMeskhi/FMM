@@ -11,8 +11,6 @@ function AlbumGrid({ albums, onSelectAlbum }: AlbumGridProps) {
     return <p>No albums loaded. Open a music folder to get started.</p>;
   }
 
-  console.log(albums, "album")
-
   return (
     <div className="album-grid">
       {albums.map((album) => (
@@ -27,6 +25,10 @@ function AlbumGrid({ albums, onSelectAlbum }: AlbumGridProps) {
             <div className="album-cover-placeholder">🎵</div>
           )}
           <span className="album-name">{album.name}</span>
+          <span className="album-meta">
+            {album.artist}
+            {album.year ? ` · ${album.year}` : ''}
+          </span>
         </button>
       ))}
     </div>

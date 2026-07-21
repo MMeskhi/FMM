@@ -22,7 +22,13 @@ function AlbumView({ album, tracks, currentIndex, onSelectTrack, onBack }: Album
         ) : (
           <div className="album-cover-placeholder large">🎵</div>
         )}
-        <h2>{album.name}</h2>
+        <div>
+          <h2>{album.name}</h2>
+          <p className="album-meta">
+            {album.artist}
+            {album.year ? ` · ${album.year}` : ''}
+          </p>
+        </div>
       </div>
       <Playlist tracks={tracks} currentIndex={currentIndex} onSelect={onSelectTrack} />
     </div>

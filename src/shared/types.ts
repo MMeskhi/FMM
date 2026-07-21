@@ -1,6 +1,13 @@
 export interface Track {
   id: string;
   name: string;
+  artist: string;
+  album: string;
+  albumArtist: string;
+  year: number | null;
+  genre: string | null;
+  trackNo: number | null;
+  diskNo: number | null;
   path: string;
   url: string;
 }
@@ -8,6 +15,8 @@ export interface Track {
 export interface Album {
   id: string;
   name: string;
+  artist: string;
+  year: number | null;
   folderPath: string;
   coverUrl: string | null;
 }

@@ -13,6 +13,11 @@
 
 .player .track-name {
   font-weight: 600;
+  margin: 0;
+}
+
+.player .track-artist {
+  color: #888;
   margin: 0 0 0.5rem;
 }
 

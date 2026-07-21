@@ -217,26 +217,65 @@ function findFirstAudioFile(folder: string): string | null {
   return audioFiles.length > 0 ? path.join(folder, audioFiles[0].name) : null;
 }
 
-// Some albums have no standalone cover image file — the artwork is embedded
-// in the audio file's own tags instead (ID3 APIC, FLAC PICTURE block, etc.),
-// which is why other media players show a cover here but a plain folder scan
-// doesn't. Fall back to reading it out of the first track with music-metadata.
-async function findEmbeddedCover(folder: string): Promise<string | null> {
-  const firstTrack = findFirstAudioFile(folder);
-  if (!firstTrack) return null;
+interface TrackTags {
+  title?: string;
+  artist?: string;
+  album?: string;
+  albumArtist?: string;
+  year?: number;
+  genre?: string;
+  trackNo?: number;
+  diskNo?: number;
+  pictureDataUrl?: string;
+}
 
+// Reads every tag music-metadata can find for one file (ID3v2 for MP3, Vorbis
+// comments for FLAC/Ogg, iTunes atoms for M4A, etc.) — title, artist, album,
+// album artist, year, genre, track/disc number, and embedded cover art.
+async function parseTrackTags(filePath: string): Promise<TrackTags> {
   try {
-    const metadata = await parseFile(firstTrack, { duration: false });
-    const picture = metadata.common.picture?.[0];
-    if (!picture) return null;
-    return `data:${picture.format};base64,${Buffer.from(picture.data).toString('base64')}`;
+    const metadata = await parseFile(filePath, { duration: false });
+    const c = metadata.common;
+    const picture = c.picture?.[0];
+
+    return {
+      title: c.title,
+      artist: c.artist,
+      album: c.album,
+      albumArtist: c.albumartist,
+      year: c.year,
+      genre: c.genre?.[0],
+      trackNo: c.track?.no ?? undefined,
+      diskNo: c.disk?.no ?? undefined,
+      pictureDataUrl: picture
+        ? `data:${picture.format};base64,${Buffer.from(picture.data).toString('base64')}`
+        : undefined,
+    };
   } catch {
-    return null;
+    return {};
   }
 }
 
-async function findAlbumCover(folder: string): Promise<string | null> {
-  return findFolderCoverImage(folder) ?? (await findEmbeddedCover(folder));
+interface AlbumSummary {
+  coverUrl: string | null;
+  artist: string;
+  year: number | null;
+}
+
+async function getAlbumSummary(folder: string): Promise<AlbumSummary> {
+  const folderCover = findFolderCoverImage(folder);
+  const firstTrack = findFirstAudioFile(folder);
+
+  if (!firstTrack) {
+    return { coverUrl: folderCover, artist: 'Unknown Artist', year: null };
+  }
+
+  const tags = await parseTrackTags(firstTrack);
+  return {
+    coverUrl: folderCover ?? tags.pictureDataUrl ?? null,
+    artist: tags.albumArtist || tags.artist || 'Unknown Artist',
+    year: tags.year ?? null,
+  };
 }
 
 async function scanAlbums(libraryFolder: string): Promise<Album[]> {
@@ -252,11 +291,14 @@ async function scanAlbums(libraryFolder: string): Promise<Album[]> {
       .filter((entry) => entry.isDirectory())
       .map(async (entry) => {
         const folderPath = path.join(libraryFolder, entry.name);
+        const summary = await getAlbumSummary(folderPath);
         return {
           id: folderPath,
           name: entry.name,
           folderPath,
-          coverUrl: await findAlbumCover(folderPath),
+          coverUrl: summary.coverUrl,
+          artist: summary.artist,
+          year: summary.year,
         };
       }),
   );
@@ -265,8 +307,8 @@ async function scanAlbums(libraryFolder: string): Promise<Album[]> {
   return albums;
 }
 
-function scanFolderForTracks(folder: string): Track[] {
-  const tracks: Track[] = [];
+async function scanFolderForTracks(folder: string): Promise<Track[]> {
+  const filePaths: string[] = [];
 
   const walk = (dir: string) => {
     let entries: fs.Dirent[];
@@ -281,18 +323,43 @@ function scanFolderForTracks(folder: string): Track[] {
       if (entry.isDirectory()) {
         walk(fullPath);
       } else if (AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
-        tracks.push({
-          id: fullPath,
-          name: path.basename(entry.name, path.extname(entry.name)),
-          path: fullPath,
-          url: toMediaUrl(fullPath),
-        });
+        filePaths.push(fullPath);
       }
     }
   };
 
   walk(folder);
-  tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  const tracks = await Promise.all(
+    filePaths.map(async (fullPath) => {
+      const fallbackName = path.basename(fullPath, path.extname(fullPath));
+      const tags = await parseTrackTags(fullPath);
+
+      return {
+        id: fullPath,
+        name: tags.title || fallbackName,
+        artist: tags.artist || 'Unknown Artist',
+        album: tags.album || '',
+        albumArtist: tags.albumArtist || tags.artist || 'Unknown Artist',
+        year: tags.year ?? null,
+        genre: tags.genre ?? null,
+        trackNo: tags.trackNo ?? null,
+        diskNo: tags.diskNo ?? null,
+        path: fullPath,
+        url: toMediaUrl(fullPath),
+      };
+    }),
+  );
+
+  tracks.sort((a, b) => {
+    const diskDiff = (a.diskNo ?? 0) - (b.diskNo ?? 0);
+    if (diskDiff !== 0) return diskDiff;
+    if (a.trackNo !== null && b.trackNo !== null && a.trackNo !== b.trackNo) {
+      return a.trackNo - b.trackNo;
+    }
+    return a.name.localeCompare(b.name, undefined, { numeric: true });
+  });
+
   return tracks;
 }
 
@@ -325,6 +392,8 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1000,
     height: 750,
+    minWidth: 1000,
+    minHeight: 750,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
