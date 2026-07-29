@@ -9,3 +9,17 @@
   align-items: center;
   justify-content: space-between;
 }
+
+.app header button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.app header button:hover {
+  background: var(--bg-surface-hover);
+}

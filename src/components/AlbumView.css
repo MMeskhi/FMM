@@ -1,11 +1,16 @@
 .back-button {
   margin-bottom: 1rem;
   padding: 0.4rem 0.8rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  background: none;
+  background: var(--bg-surface);
+  color: var(--text-primary);
   cursor: pointer;
   font: inherit;
+}
+
+.back-button:hover {
+  background: var(--bg-surface-hover);
 }
 
 .album-header {
@@ -21,14 +26,14 @@
 
 .album-header .album-meta {
   margin: 0.25rem 0 0;
-  color: #888;
+  color: var(--text-muted);
 }
 
 .album-cover-placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #eee;
+  background: var(--bg-surface);
   font-size: 2rem;
 }
 

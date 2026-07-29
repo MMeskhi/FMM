@@ -237,6 +237,18 @@ call explained, just ask.
       against the real window edges, with the rest of the UI still
       centered/padded as before.
 
+13. **Full dark theme using a fixed 5-shade purple palette.** `src/index.css`
+    defines the 5 raw colors as `:root` variables (`--color-1` darkest
+    through `--color-5` lightest), plus a semantic layer on top
+    (`--bg-app`, `--bg-surface`, `--bg-surface-hover`, `--bg-active`,
+    `--accent`, `--border-color`, `--text-primary`, `--text-muted`) —
+    every component's CSS references the semantic names, never the raw
+    `--color-N` ones directly, so the actual palette can change in one
+    place later without touching component files. `--bg-app` also backs
+    `TitleBar`, so the frameless window's title bar and body blend into
+    one seamless dark surface instead of looking like two different
+    panels.
+
 ## Bugs we hit & fixed (worth knowing if you touch this code)
 
 - **`Not allowed to load local resource` for `file://` URLs** — the
@@ -273,6 +285,7 @@ call explained, just ask.
 - [x] ALAC-in-M4A files are transcoded to FLAC on first play and cached (fixes silent playback failure)
 - [x] Full tag metadata — title, artist, album artist, year, genre, track/disc number — shown throughout the UI
 - [x] Custom frameless title bar (own minimize/maximize/close, replacing the native window chrome)
+- [x] Dark theme using a fixed 5-shade purple palette, defined once as CSS variables in `index.css`
 
 ## What's not done yet
 

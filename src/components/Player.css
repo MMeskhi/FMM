@@ -1,9 +1,9 @@
 .player {
   margin: 1.5rem 0;
   padding: 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  background: white;
+  background: var(--bg-surface);
 
   position: sticky;
   bottom: 16px;
@@ -17,13 +17,27 @@
 }
 
 .player .track-artist {
-  color: #888;
+  color: var(--text-muted);
   margin: 0 0 0.5rem;
 }
 
 .player .controls {
   display: flex;
   gap: 0.5rem;
+}
+
+.player .controls button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.player .controls button:hover {
+  background: var(--bg-active);
 }
 
 .player .seek {
