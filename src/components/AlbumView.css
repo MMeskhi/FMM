@@ -1,32 +1,37 @@
 .back-button {
-  margin-bottom: 1rem;
-  padding: 0.4rem 0.8rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding: 0.4rem 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
   cursor: pointer;
   font: inherit;
+  font-size: 0.8rem;
 }
 
 .back-button:hover {
-  background: var(--bg-surface-hover);
+  color: var(--text-primary);
 }
 
 .album-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
 }
 
 .album-header h2 {
-  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 
 .album-header .album-meta {
-  margin: 0.25rem 0 0;
+  margin: 0.3rem 0 0;
   color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .album-cover-placeholder {
@@ -34,13 +39,14 @@
   align-items: center;
   justify-content: center;
   background: var(--bg-surface);
-  font-size: 2rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
 }
 
 .album-header-cover,
 .album-header .album-cover-placeholder.large {
   width: 5rem;
   height: 5rem;
-  border-radius: 6px;
+  border-radius: 4px;
   object-fit: cover;
 }

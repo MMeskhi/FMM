@@ -1,8 +1,8 @@
 .album-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
-  gap: 1.25rem;
-  margin: 1.5rem 0;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 1.75rem;
+  margin: 0.5rem 0;
 }
 
 .album-card {
@@ -17,14 +17,31 @@
   font: inherit;
   color: inherit;
   text-align: left;
+  transition: all 0.2s ease;
 }
 
 .album-card img,
 .album-cover-placeholder {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: 4px;
   object-fit: cover;
+}
+
+.album-card img {
+  filter: saturate(0.85) contrast(0.98);
+  transition: filter 0.2s ease;
+}
+
+.album-card:hover {
+  filter: saturate(1) contrast(1);
+  opacity: 0.94;
+}
+
+.album-card:active {
+  opacity: 1;
+  transform: scale(0.994);
+    transition: all 0s ease;
 }
 
 .album-cover-placeholder {
@@ -32,7 +49,8 @@
   align-items: center;
   justify-content: center;
   background: var(--bg-surface);
-  font-size: 2rem;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
 }
 
 .album-name {
@@ -41,6 +59,6 @@
 }
 
 .album-meta {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }

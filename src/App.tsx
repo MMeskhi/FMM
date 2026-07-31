@@ -3,6 +3,7 @@ import Player from './components/Player';
 import AlbumGrid from './components/AlbumGrid';
 import AlbumView from './components/AlbumView';
 import TitleBar from './components/TitleBar';
+import { FolderIcon } from './components/icons';
 import type { Album, Track } from './shared/types';
 import './App.css';
 
@@ -52,7 +53,10 @@ function App() {
       <div className="app-content">
         <header>
           <h1>FMM</h1>
-          <button onClick={handleOpenLibrary}>Open Music Folder</button>
+          <button onClick={handleOpenLibrary}>
+            <FolderIcon />
+            Open Music Folder
+          </button>
         </header>
 
         {selectedAlbum ? (

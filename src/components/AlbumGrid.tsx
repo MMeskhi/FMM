@@ -1,4 +1,5 @@
 import type { Album } from '../shared/types';
+import { NoteIcon } from './icons';
 import './AlbumGrid.css';
 
 interface AlbumGridProps {
@@ -22,7 +23,9 @@ function AlbumGrid({ albums, onSelectAlbum }: AlbumGridProps) {
           {album.coverUrl ? (
             <img src={album.coverUrl} alt={album.name} />
           ) : (
-            <div className="album-cover-placeholder">🎵</div>
+            <div className="album-cover-placeholder">
+              <NoteIcon />
+            </div>
           )}
           <span className="album-name">{album.name}</span>
           <span className="album-meta">

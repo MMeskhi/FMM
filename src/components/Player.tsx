@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Track } from '../shared/types';
+import { PrevIcon, PlayIcon, PauseIcon, NextIcon } from './icons';
 import './Player.css';
 
 interface PlayerProps {
@@ -60,12 +61,20 @@ function Player({ track, onEnded, onNext, onPrev }: PlayerProps) {
           console.error('audio element error:', e.currentTarget.error, track.url)
         }
       />
-      <p className="track-name">{track.name}</p>
-      <p className="track-artist">{track.artist}</p>
+      <div className="track-info">
+        <p className="track-name">{track.name}</p>
+        <p className="track-artist">{track.artist}</p>
+      </div>
       <div className="controls">
-        <button onClick={onPrev}>⏮</button>
-        <button onClick={togglePlay}>{isPlaying ? '⏸' : '▶'}</button>
-        <button onClick={onNext}>⏭</button>
+        <button onClick={onPrev} aria-label="Previous track">
+          <PrevIcon />
+        </button>
+        <button className="play-toggle" onClick={togglePlay} aria-label={isPlaying ? 'Pause' : 'Play'}>
+          {isPlaying ? <PauseIcon /> : <PlayIcon />}
+        </button>
+        <button onClick={onNext} aria-label="Next track">
+          <NextIcon />
+        </button>
       </div>
       <div className="seek">
         <span>{formatTime(progress)}</span>

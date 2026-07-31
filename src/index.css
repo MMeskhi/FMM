@@ -1,26 +1,68 @@
+/*
+  Gen X Soft Club — a quieter, cool-toned counterpart to Y2K maximalism:
+  fog whites, slate greys, one desaturated icy-blue accent, clean geometry,
+  and a whisper of film grain instead of gloss or drop shadows.
+*/
 :root {
-  --color-1: #100533;
-  --color-2: #1e1259;
-  --color-3: #272772;
-  --color-4: #5132a4;
-  --color-5: #7144a2;
+  --fog-0: #f3f4f5;
+  --fog-50: #eaecee;
+  --fog-100: #dfe2e4;
+  --mist-200: #ced2d5;
 
-  --bg-app: var(--color-1);
-  --bg-surface: var(--color-2);
-  --bg-surface-hover: var(--color-3);
-  --bg-active: var(--color-4);
-  --accent: var(--color-5);
-  --border-color: var(--color-3);
-  --text-primary: #f5f4fa;
-  --text-muted: #b3a6da;
+  --slate-900: #22262a;
+  --slate-500: #72787d;
+
+  --ice-100: #dce6ea;
+  --ice-500: #5c8aa3;
+  --ice-600: #3f6e86;
+
+  --bg-app: var(--fog-0);
+  --bg-surface: var(--fog-50);
+  --bg-surface-hover: var(--fog-100);
+  --bg-active: var(--ice-100);
+  --accent: var(--ice-500);
+  --accent-strong: var(--ice-600);
+  --border-color: var(--mist-200);
+  --text-primary: var(--slate-900);
+  --text-muted: var(--slate-500);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial,
     sans-serif;
   margin: 0;
-  height: 100%;
-  background: var(--bg-app);
+  background-color: var(--bg-app);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.03 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
