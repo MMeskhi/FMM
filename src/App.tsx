@@ -3,6 +3,7 @@ import Player from './components/Player';
 import AlbumGrid from './components/AlbumGrid';
 import AlbumView from './components/AlbumView';
 import TitleBar from './components/TitleBar';
+import Backdrop from './components/Backdrop';
 import { FolderIcon } from './components/icons';
 import type { Album, Track } from './shared/types';
 import './App.css';
@@ -49,35 +50,38 @@ function App() {
 
   return (
     <div className="app">
+      <Backdrop />
       <TitleBar />
       <div className="app-content">
-        <header>
-          <h1>FMM</h1>
-          <button onClick={handleOpenLibrary}>
-            <FolderIcon />
-            Open Music Folder
-          </button>
-        </header>
+        <div className="app-content-inner">
+          <header>
+            <h1>FMM</h1>
+            <button onClick={handleOpenLibrary}>
+              <FolderIcon />
+              Open Music Folder
+            </button>
+          </header>
 
-        {selectedAlbum ? (
-          <AlbumView
-            album={selectedAlbum}
-            tracks={tracks}
-            currentIndex={currentIndex}
-            onSelectTrack={setCurrentIndex}
-            onBack={() => setSelectedAlbum(null)}
-          />
-        ) : (
-          <AlbumGrid albums={albums} onSelectAlbum={handleOpenAlbum} />
-        )}
-
-        <Player
-          track={currentTrack}
-          onEnded={handleNext}
-          onNext={handleNext}
-          onPrev={handlePrev}
-        />
+          {selectedAlbum ? (
+            <AlbumView
+              album={selectedAlbum}
+              tracks={tracks}
+              currentIndex={currentIndex}
+              onSelectTrack={setCurrentIndex}
+              onBack={() => setSelectedAlbum(null)}
+            />
+          ) : (
+            <AlbumGrid albums={albums} onSelectAlbum={handleOpenAlbum} />
+          )}
+        </div>
       </div>
+
+      <Player
+        track={currentTrack}
+        onEnded={handleNext}
+        onNext={handleNext}
+        onPrev={handlePrev}
+      />
     </div>
   );
 }
