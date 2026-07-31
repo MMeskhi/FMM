@@ -39,11 +39,11 @@
 }
 
 .playlist li.active {
-  background: var(--bg-active);
-  border-left-color: var(--accent);
+  background: var(--scene-accent-soft, var(--bg-active));
+  border-left-color: var(--scene-accent, var(--accent));
 }
 
 .playlist li.active .track-name {
-  color: var(--accent-strong);
+  color: var(--scene-accent-strong, var(--accent-strong));
   font-weight: 600;
 }

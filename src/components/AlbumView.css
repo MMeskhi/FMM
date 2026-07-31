@@ -49,4 +49,6 @@
   height: 5rem;
   border-radius: 4px;
   object-fit: cover;
+  box-shadow: 0 0 0 3px var(--scene-accent-soft, transparent);
+  transition: box-shadow 0.5s ease;
 }

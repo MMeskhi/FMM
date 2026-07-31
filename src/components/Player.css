@@ -65,12 +65,13 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--scene-accent, var(--accent));
   color: var(--fog-0);
+  transition: background-color 0.4s ease;
 }
 
 .player .controls .play-toggle:hover {
-  background: var(--accent-strong);
+  background: var(--scene-accent-strong, var(--accent-strong));
 }
 
 .player .seek {
@@ -112,9 +113,9 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--scene-accent, var(--accent));
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, background-color 0.4s ease;
 }
 
 .player .seek input[type='range']:hover::-webkit-slider-thumb {

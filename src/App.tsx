@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import Player from './components/Player';
 import AlbumGrid from './components/AlbumGrid';
 import AlbumView from './components/AlbumView';
 import TitleBar from './components/TitleBar';
 import Backdrop from './components/Backdrop';
 import { FolderIcon } from './components/icons';
+import { useAlbumPalette } from './hooks/useAlbumPalette';
 import type { Album, Track } from './shared/types';
 import './App.css';
 
@@ -15,6 +16,15 @@ function App() {
   const [currentIndex, setCurrentIndex] = useState<number | null>(null);
 
   const currentTrack = currentIndex !== null ? tracks[currentIndex] : null;
+  const palette = useAlbumPalette(selectedAlbum?.coverUrl ?? null);
+  const sceneStyle = palette
+    ? ({
+        '--scene-accent': palette.accent,
+        '--scene-accent-strong': palette.accentStrong,
+        '--scene-accent-soft': palette.accentSoft,
+        '--scene-secondary': palette.secondary,
+      } as CSSProperties)
+    : undefined;
 
   useEffect(() => {
     window.api.loadLastFolder().then((result) => {
@@ -49,7 +59,7 @@ function App() {
   };
 
   return (
-    <div className="app">
+    <div className="app" style={sceneStyle}>
       <Backdrop />
       <TitleBar />
       <div className="app-content">

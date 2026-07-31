@@ -6,8 +6,23 @@
   pointer-events: none;
 }
 
+/* Full-bleed color wash — guarantees the album's tint always reaches the
+   center of the window, no matter how large it's resized. The blobs below
+   add drifting texture on top, but this is the layer that keeps the vibe
+   from shrinking into the corners on a maximized/ultrawide window. */
+.backdrop-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(130% 90% at 40% 0%, var(--scene-accent, var(--ice-100)) 0%, transparent 62%),
+    radial-gradient(120% 100% at 90% 100%, var(--scene-secondary, var(--sage-400)) 0%, transparent 60%);
+  opacity: 0.6;
+  transition: opacity 0.6s ease;
+}
+
 /* Soft, hazy color pooling behind frosted glass — like light diffusing
-   through fogged windows rather than distinct shapes. */
+   through fogged windows rather than distinct shapes. Sized in vmax so
+   they keep covering the same proportion of the window at any size. */
 .backdrop-blob {
   position: absolute;
   border-radius: 50%;
@@ -15,31 +30,32 @@
   opacity: 0.55;
   will-change: transform;
   animation: backdrop-drift 48s ease-in-out infinite alternate;
+  transition: background-color 1.2s ease;
 }
 
 .backdrop-blob--a {
-  width: 36rem;
-  height: 32rem;
-  top: -14%;
-  left: -10%;
-  background: var(--ice-100);
-  opacity: 0.75;
+  width: 68vmax;
+  height: 50vmax;
+  top: -20%;
+  left: -14%;
+  background: var(--scene-accent, var(--ice-100));
+  opacity: 0.7;
 }
 
 .backdrop-blob--b {
-  width: 30rem;
-  height: 26rem;
+  width: 40vmax;
+  height: 34vmax;
   bottom: -16%;
   right: -8%;
-  background: var(--sage-400);
+  background: var(--scene-secondary, var(--sage-400));
   opacity: 0.45;
   animation-delay: -18s;
   animation-duration: 56s;
 }
 
 .backdrop-blob--c {
-  width: 22rem;
-  height: 18rem;
+  width: 30vmax;
+  height: 24vmax;
   top: 36%;
   right: 10%;
   background: var(--mist-200);
@@ -58,21 +74,22 @@
   opacity: 0.4;
   will-change: transform;
   animation: backdrop-streak-drift 30s ease-in-out infinite alternate;
+  transition: background-color 1.2s ease;
 }
 
 .backdrop-streak--a {
-  width: 60rem;
+  width: 90vmax;
   top: 20%;
   left: -20%;
-  background: var(--ice-500);
+  background: var(--scene-accent, var(--ice-500));
   opacity: 0.3;
 }
 
 .backdrop-streak--b {
-  width: 50rem;
+  width: 75vmax;
   bottom: 14%;
   left: -10%;
-  background: var(--accent-strong);
+  background: var(--scene-accent-strong, var(--accent-strong));
   opacity: 0.2;
   animation-delay: -14s;
   animation-duration: 36s;

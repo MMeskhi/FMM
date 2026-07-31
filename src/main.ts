@@ -27,6 +27,10 @@ protocol.registerSchemesAsPrivileged([
       secure: true,
       stream: true,
       supportFetchAPI: true,
+      // Cover art gets drawn into a <canvas> to extract an album's color
+      // palette; without CORS the canvas is "tainted" and reading pixels
+      // back out throws a SecurityError.
+      corsEnabled: true,
     },
   },
 ]);
@@ -487,6 +491,7 @@ app.on('ready', () => {
           'Content-Range': `bytes ${start}-${end}/${sourceStat.size}`,
           'Content-Length': String(end - start + 1),
           'Accept-Ranges': 'bytes',
+          'Access-Control-Allow-Origin': '*',
         },
       });
     }
@@ -498,6 +503,7 @@ app.on('ready', () => {
         'Content-Type': source.mimeType,
         'Content-Length': String(sourceStat.size),
         'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*',
       },
     });
   });
