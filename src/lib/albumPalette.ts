@@ -37,41 +37,82 @@ function hueDistance(a: number, b: number): number {
   return diff > 180 ? 360 - diff : diff;
 }
 
-// Buckets an image's pixels into 24 hue slices, ignoring near-neutral
-// (low-saturation) and near-black/near-white pixels so a track's dark
-// backdrop or a white matte border doesn't drown out its actual colors.
-// Returns the dominant hue and, if one stands apart enough, a second.
-function dominantHues(imageData: ImageData): number[] {
-  const buckets = new Array(24).fill(0) as number[];
+interface HueCluster {
+  hue: number;
+  saturation: number;
+  lightness: number;
+  weight: number;
+}
+
+const BUCKET_COUNT = 36;
+
+// Clusters an image's pixels into 10°-wide hue buckets, ignoring
+// near-neutral and near-black/near-white pixels so a track's dark backdrop
+// or a white matte border doesn't drown out its actual colors. Each pixel
+// is weighted by its own saturation, so a small vivid patch (a logo, a
+// sleeve's accent color) can outrank a much larger but duller background —
+// closer to what a viewer would call the cover's "dominant color" than a
+// flat pixel count. Within the winning bucket, the hue/saturation/lightness
+// are the true weighted averages of its pixels (not the bucket's midpoint),
+// so the result tracks the actual cover instead of a quantized guess.
+function clusterHues(imageData: ImageData): HueCluster[] {
+  const weight = new Array(BUCKET_COUNT).fill(0) as number[];
+  const sin = new Array(BUCKET_COUNT).fill(0) as number[];
+  const cos = new Array(BUCKET_COUNT).fill(0) as number[];
+  const satSum = new Array(BUCKET_COUNT).fill(0) as number[];
+  const lightSum = new Array(BUCKET_COUNT).fill(0) as number[];
+
   const { data } = imageData;
+  const bucketSize = 360 / BUCKET_COUNT;
 
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] < 128) continue;
     const [h, s, l] = rgbToHsl(data[i], data[i + 1], data[i + 2]);
-    if (s < 0.12 || l < 0.08 || l > 0.92) continue;
-    buckets[Math.floor(h / 15) % 24] += 1;
+    if (s < 0.15 || l < 0.08 || l > 0.92) continue;
+
+    const bucket = Math.floor(h / bucketSize) % BUCKET_COUNT;
+    const rad = (h * Math.PI) / 180;
+    weight[bucket] += s;
+    sin[bucket] += Math.sin(rad) * s;
+    cos[bucket] += Math.cos(rad) * s;
+    satSum[bucket] += s * s;
+    lightSum[bucket] += l * s;
   }
 
-  const ranked = buckets
-    .map((count, index) => ({ hue: index * 15 + 7.5, count }))
-    .filter((bucket) => bucket.count > 0)
-    .sort((a, b) => b.count - a.count);
+  const clusters: HueCluster[] = [];
+  for (let i = 0; i < BUCKET_COUNT; i++) {
+    if (weight[i] === 0) continue;
+    let hue = (Math.atan2(sin[i], cos[i]) * 180) / Math.PI;
+    if (hue < 0) hue += 360;
+    clusters.push({
+      hue,
+      saturation: satSum[i] / weight[i],
+      lightness: lightSum[i] / weight[i],
+      weight: weight[i],
+    });
+  }
 
-  if (ranked.length === 0) return [];
-
-  const primary = ranked[0].hue;
-  const secondary = ranked.find((bucket) => hueDistance(bucket.hue, primary) > 40)?.hue;
-  return secondary === undefined ? [primary] : [primary, secondary];
+  return clusters.sort((a, b) => b.weight - a.weight);
 }
 
-function hsl(hue: number, lightness: number, saturation = 30): string {
-  return `hsl(${hue.toFixed(1)}, ${saturation}%, ${lightness}%)`;
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
-// Derives a small, muted palette from an album cover so each album can tint
-// its own page — kept desaturated/lightened to the same ranges as the
-// app's default ice/sage tokens, so the "vibe" shifts hue without ever
-// looking like raw, saturated album-art colors dropped into the UI.
+// Renders a measured cluster as CSS hsl(), nudging saturation/lightness
+// into a legible band for the given UI role (accent chrome shouldn't be
+// near-black or neon) — but the hue itself is left untouched, since hue is
+// what makes a swatch actually read as "that album's color".
+function toRole(cluster: HueCluster, satRange: [number, number], lightRange: [number, number]): string {
+  const saturation = clamp(cluster.saturation * 100, satRange[0], satRange[1]);
+  const lightness = clamp(cluster.lightness * 100, lightRange[0], lightRange[1]);
+  return `hsl(${cluster.hue.toFixed(1)}, ${saturation.toFixed(0)}%, ${lightness.toFixed(0)}%)`;
+}
+
+// Derives a small palette from an album cover so each album can tint its
+// own page — the hue and rough color intensity are pulled straight from
+// the cover's actual dominant color, with saturation/lightness only
+// clamped (not replaced) into a legible range for use as UI chrome.
 export async function extractAlbumPalette(imageUrl: string): Promise<AlbumPalette | null> {
   try {
     const img = new Image();
@@ -92,14 +133,20 @@ export async function extractAlbumPalette(imageUrl: string): Promise<AlbumPalett
     ctx.drawImage(img, 0, 0, size, size);
     const imageData = ctx.getImageData(0, 0, size, size);
 
-    const [primary, secondary] = dominantHues(imageData);
-    if (primary === undefined) return null;
+    const clusters = clusterHues(imageData);
+    if (clusters.length === 0) return null;
+
+    const primary = clusters[0];
+    const secondary = clusters.find((c) => hueDistance(c.hue, primary.hue) > 40) ?? {
+      ...primary,
+      hue: (primary.hue + 130) % 360,
+    };
 
     return {
-      accent: hsl(primary, 50),
-      accentStrong: hsl(primary, 38),
-      accentSoft: hsl(primary, 89, 26),
-      secondary: hsl(secondary ?? (primary + 130) % 360, 62, 22),
+      accent: toRole(primary, [26, 46], [42, 58]),
+      accentStrong: toRole(primary, [30, 50], [32, 44]),
+      accentSoft: toRole(primary, [18, 32], [86, 92]),
+      secondary: toRole(secondary, [16, 30], [54, 68]),
     };
   } catch {
     return null;
