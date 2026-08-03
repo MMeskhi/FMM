@@ -268,6 +268,17 @@ call explained, just ask.
   Fixed by hand-rolling the response with `fs.createReadStream` and
   correct `Content-Length` / `Accept-Ranges` / `Content-Range` headers
   (206 for ranged requests, 200 for full ones).
+- **Switching albums stopped whatever was playing.** `App.tsx` used one
+  shared `tracks`/`currentIndex` pair for both "what `AlbumView` is
+  currently displaying" and "what `Player` is currently playing."
+  Opening a different album replaced `tracks` and reset `currentIndex`
+  to `null` to clear the *display* selection, which also nulled out
+  `currentTrack` and unmounted `Player`. Fixed by splitting them: a
+  `nowPlaying: { albumId, tracks, index } | null` state that only
+  `Player` reads from, changed only by picking a track or hitting next/
+  prev — browsing to a different album (or back to the grid) no longer
+  touches it. `AlbumView`'s active-track highlight now only lights up
+  when `nowPlaying.albumId` matches the album currently on screen.
 
 ## What's done
 

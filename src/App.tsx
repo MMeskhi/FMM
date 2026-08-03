@@ -9,13 +9,24 @@ import { useAlbumPalette } from './hooks/useAlbumPalette';
 import type { Album, Track } from './shared/types';
 import './App.css';
 
+interface NowPlaying {
+  albumId: string;
+  tracks: Track[];
+  index: number;
+}
+
 function App() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+  // Deliberately separate from `tracks`/`selectedAlbum`: those describe
+  // whatever album is currently on screen, but playback should survive
+  // navigating to a different album or back to the grid — it only changes
+  // when the user picks a track themselves or hits next/prev/pause.
+  const [nowPlaying, setNowPlaying] = useState<NowPlaying | null>(null);
 
-  const currentTrack = currentIndex !== null ? tracks[currentIndex] : null;
+  const currentTrack = nowPlaying ? nowPlaying.tracks[nowPlaying.index] : null;
+  const activeIndex = selectedAlbum && nowPlaying?.albumId === selectedAlbum.id ? nowPlaying.index : null;
   const palette = useAlbumPalette(selectedAlbum?.coverUrl ?? null);
   const sceneStyle = palette
     ? ({
@@ -38,24 +49,32 @@ function App() {
     setAlbums(result.albums);
     setSelectedAlbum(null);
     setTracks([]);
-    setCurrentIndex(null);
+    setNowPlaying(null);
   };
 
   const handleOpenAlbum = async (album: Album) => {
     const albumTracks = await window.api.getAlbumTracks(album.folderPath);
     setSelectedAlbum(album);
     setTracks(albumTracks);
-    setCurrentIndex(null);
+  };
+
+  const handleSelectTrack = (index: number) => {
+    if (!selectedAlbum) return;
+    setNowPlaying({ albumId: selectedAlbum.id, tracks, index });
   };
 
   const handleNext = () => {
-    if (currentIndex === null || tracks.length === 0) return;
-    setCurrentIndex((currentIndex + 1) % tracks.length);
+    setNowPlaying((prev) => {
+      if (!prev || prev.tracks.length === 0) return prev;
+      return { ...prev, index: (prev.index + 1) % prev.tracks.length };
+    });
   };
 
   const handlePrev = () => {
-    if (currentIndex === null || tracks.length === 0) return;
-    setCurrentIndex((currentIndex - 1 + tracks.length) % tracks.length);
+    setNowPlaying((prev) => {
+      if (!prev || prev.tracks.length === 0) return prev;
+      return { ...prev, index: (prev.index - 1 + prev.tracks.length) % prev.tracks.length };
+    });
   };
 
   return (
@@ -76,8 +95,8 @@ function App() {
             <AlbumView
               album={selectedAlbum}
               tracks={tracks}
-              currentIndex={currentIndex}
-              onSelectTrack={setCurrentIndex}
+              currentIndex={activeIndex}
+              onSelectTrack={handleSelectTrack}
               onBack={() => setSelectedAlbum(null)}
             />
           ) : (
